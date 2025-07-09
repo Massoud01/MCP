@@ -20,11 +20,11 @@ export async function createEvent(
     },
     start: {
       dateTime: eventDetails.startDateTime,
-      timeZone: eventDetails.timeZone || "UTC",
+      timeZone: "Asia/Beirut",
     },
     end: {
       dateTime: eventDetails.endDateTime,
-      timeZone: eventDetails.timeZone || "UTC",
+      timeZone: "Asia/Beirut",
     },
   };
 

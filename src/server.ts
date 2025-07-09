@@ -48,7 +48,8 @@ const getUserAvailabilityGraph = server.tool(
         return `• ${time}: ${status}`;
       });
 
-      const responseText = `📅 Availability for **${email}** on ${date}:\n\n${slots.join("\n")}`;
+      const currentDate = new Date().toISOString().split('T')[0]; // Gets today's date in YYYY-MM-DD
+      const responseText = `📅 Availability for **${email}** on ${date}:\n\n${slots.join("\n")}\n\n💡 **Today is ${currentDate}** - Use this as reference for relative dates.`;
 
       return {
         content: [{ type: "text", text: responseText }],
@@ -113,6 +114,33 @@ const createCalendarEvent = server.tool(
         ],
       };
     }
+  }
+);
+
+// Smart date helper tool that always knows the current date
+const getCurrentDate = server.tool(
+  "get-current-date",
+  "Get the current date and time information for reference",
+  {},
+  async () => {
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentTime = now.toTimeString().split(' ')[0].slice(0, 5); // HH:MM
+    const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const fullDate = now.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    return {
+      content: [
+        {
+          type: "text",
+          text: `📅 **Current Date Information:**\n\n• **Today**: ${dayOfWeek}, ${fullDate}\n• **Date**: ${currentDate}\n• **Time**: ${currentTime}\n\n💡 **Use this for relative date calculations:**\n• Tomorrow = ${new Date(now.getTime() + 24*60*60*1000).toISOString().split('T')[0]}\n• Next week = ${new Date(now.getTime() + 7*24*60*60*1000).toISOString().split('T')[0]}`
+        }
+      ]
+    };
   }
 );
 

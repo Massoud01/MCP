@@ -19,11 +19,11 @@ export async function checkUserAvailability(
         schedules: [userPrincipalName],
         startTime: {
           dateTime: startTime,
-          timeZone: "UTC",
+          timeZone: "Asia/Beirut",
         },
         endTime: {
           dateTime: endTime,
-          timeZone: "UTC",
+          timeZone: "Asia/Beirut",
         },
         availabilityViewInterval: 30,
       }),
