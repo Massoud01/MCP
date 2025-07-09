@@ -1,10 +1,11 @@
 import { getAccessToken } from "./auth.js";
 
-export async function checkUserAvailability(userPrincipalName: string) {
+export async function checkUserAvailability(
+  userPrincipalName: string,
+  startTime: string, // ISO string like "2025-07-09T09:00:00Z"
+  endTime: string     // ISO string like "2025-07-09T17:00:00Z"
+) {
   const token = await getAccessToken();
-
-  const now = new Date();
-  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
 
   const response = await fetch(
     `https://graph.microsoft.com/v1.0/users/${userPrincipalName}/calendar/getSchedule`,
@@ -17,11 +18,11 @@ export async function checkUserAvailability(userPrincipalName: string) {
       body: JSON.stringify({
         schedules: [userPrincipalName],
         startTime: {
-          dateTime: now.toISOString(),
+          dateTime: startTime,
           timeZone: "UTC",
         },
         endTime: {
-          dateTime: oneHourLater.toISOString(),
+          dateTime: endTime,
           timeZone: "UTC",
         },
         availabilityViewInterval: 30,
@@ -38,9 +39,9 @@ export async function checkUserAvailability(userPrincipalName: string) {
   return data;
 }
 
-export async function findAvailability(email: string) {
+export async function findAvailability(email: string, startTime: string, endTime: string) {
   try {
-    const availability = await checkUserAvailability(email);
+    const availability = await checkUserAvailability(email, startTime, endTime);
     return availability;
   } catch (error: any) {
     throw new Error(
@@ -48,3 +49,4 @@ export async function findAvailability(email: string) {
     );
   }
 }
+

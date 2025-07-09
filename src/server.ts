@@ -1,7 +1,6 @@
 import express, { Request, Response } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { findAvailability } from "./findAvailability.js";
 import { createEvent } from "./createEvent.js";
 import { checkUserAvailability } from "./availability.js";
 import { z } from "zod";
@@ -11,108 +10,48 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-// // Get Chuck Norris joke tool
-// const getChuckJoke = server.tool(
-//   "get-chuck-joke",
-//   "Get a random Chuck Norris joke",
-//   async () => {
-//     const response = await fetch("https://api.chucknorris.io/jokes/random");
-//     const data = await response.json();
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: data.value,
-//         },
-//       ],
-//     };
-//   }
-// );
 
-// // Get Chuck Norris joke by category tool
-// const getChuckJokeByCategory = server.tool(
-//   "get-chuck-joke-by-category",
-//   "Get a random Chuck Norris joke by category",
-//   {
-//     category: z.string().describe("Category of the Chuck Norris joke"),
-//   },
-//   async (params: { category: string }) => {
-//     const response = await fetch(
-//       `https://api.chucknorris.io/jokes/random?category=${params.category}`
-//     );
-//     const data = await response.json();
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: data.value,
-//         },
-//       ],
-//     };
-//   }
-// );
-
-// // Get Chuck Norris joke categories tool
-// const getChuckCategories = server.tool(
-//   "get-chuck-categories",
-//   "Get all available categories for Chuck Norris jokes",
-//   async () => {
-//     const response = await fetch("https://api.chucknorris.io/jokes/categories");
-//     const data = await response.json();
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: data.join(", "),
-//         },
-//       ],
-//     };
-//   }
-// );
-
-// // Get Dad joke tool
-// const getDadJoke = server.tool(
-//   "get-dad-joke",
-//   "Get a random dad joke",
-//   async () => {
-//     const response = await fetch("https://icanhazdadjoke.com/", {
-//       headers: {
-//         Accept: "application/json",
-//       },
-//     });
-//     const data = await response.json();
-//     return {
-//       content: [
-//         {
-//           type: "text",
-//           text: data.joke,
-//         },
-//       ],
-//     };
-//   }
-// );
 const getUserAvailabilityGraph = server.tool(
   "get-user-availability-graph",
   "Get calendar availability for a user using Microsoft Graph (app-only)",
   {
-    email: z.string().describe("The email address of the user to check availability for"),
+    email: z.string().describe("The email of the user to check availability for"),
+    date: z.string().describe("Date to check availability on (YYYY-MM-DD)"),
+    startTime: z.string().describe("Start time (HH:mm)"),
+    endTime: z.string().describe("End time (HH:mm)"),
   },
-  async ({ email }: { email: string }) => {
+  async ({ email, date, startTime, endTime }) => {
     try {
-      const data = await checkUserAvailability(email);
+      // Combine date and times into ISO strings in UTC
+      const start = new Date(`${date}T${startTime}:00Z`).toISOString();
+      const end = new Date(`${date}T${endTime}:00Z`).toISOString();
+
+      const data = await checkUserAvailability(email, start, end);
 
       const availability = data.value?.[0]?.availabilityView;
-      const responseText = availability
-        ? `📅 Availability for ${email}: ${availability}`
-        : `⚠️ No availability data returned for ${email}.`;
+      if (!availability) {
+        return {
+          content: [{ type: "text", text: `⚠️ No availability data returned for ${email}.` }],
+        };
+      }
+
+      const slots = availability.split("").map((code: string, index: number) => {
+        const slotHour = parseInt(startTime.split(":")[0]) + Math.floor(index / 2);
+        const slotMin = index % 2 === 0 ? "00" : "30";
+        const time = `${slotHour.toString().padStart(2, "0")}:${slotMin}`;
+        const status =
+          code === "0" ? "✅ Available" :
+          code === "1" ? "🟡 Tentative" :
+          code === "2" ? "❌ Busy" :
+          code === "3" ? "🔒 OOF" :
+          "❓ Unknown";
+        return `• ${time}: ${status}`;
+      });
+
+      const responseText = `📅 Availability for **${email}** on ${date}:\n\n${slots.join("\n")}`;
 
       return {
-        content: [
-          {
-            type: "text",
-            text: responseText,
-          },
-        ],
+        content: [{ type: "text", text: responseText }],
       };
     } catch (error: any) {
       console.error(`Error fetching availability for ${email}:`, error);
@@ -121,41 +60,6 @@ const getUserAvailabilityGraph = server.tool(
           {
             type: "text",
             text: `❌ Error fetching availability for ${email}: ${error.message}`,
-          },
-        ],
-      };
-    }
-  }
-);
-
-const getUserAvailability = server.tool(
-  "get-user-availability",
-  "Get calendar availability for a user (delegated)",
-  {
-    email: z.string().describe("The email address of the user to check availability for"),
-  },
-  async ({ email }: { email: string }) => {
-    try {
-      const data = await findAvailability(email);
-
-      const responseText = data.value?.[0]?.availabilityView
-        ? `Availability for ${email}: ${data.value[0].availabilityView}`
-        : `No availability data found for ${email}.`;
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: responseText,
-          },
-        ],
-      };
-    } catch (error: any) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `❌ Failed to get availability: ${error.message}`,
           },
         ],
       };
