@@ -23,8 +23,8 @@ const getUserAvailabilityGraph = server.tool(
   async ({ email, date, startTime, endTime }) => {
     try {
       // Combine date and times into ISO strings in UTC
-      const start = new Date(`${date}T${startTime}:00Z`).toISOString();
-      const end = new Date(`${date}T${endTime}:00Z`).toISOString();
+      const start = new Date(`${date}T${startTime}:00`).toISOString();
+      const end = new Date(`${date}T${endTime}:00`).toISOString();
 
       const data = await checkUserAvailability(email, start, end);
 
